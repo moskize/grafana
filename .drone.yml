@@ -1,0 +1,69 @@
+workspace:
+  base: /drone
+  path: workspace
+
+pipeline:
+
+  build-go-server:
+    image: golang:1.8
+    environment:
+      - GOPATH=/drone/workspace/pandora-sniplet
+    commands:
+      - go build app
+  
+  build-front-ending:
+    images: node:6.9
+    commands:
+      - npm install yarn -g
+      - npm install grunt -g
+      - cd src/github.com/grafana/grafana
+      - pili_scripts/build_server || exit 1
+      - npm install || exit 1
+      - npm run build || exit 1
+      - pili_scripts/build_plugins || exit 1
+
+  build-datasource:
+    image: buildpack-deps:jessie-scm
+    commands:
+      - rm -rf .git
+      - git clone https://github.com/kirk-enterprise/library-images.git
+      - cd library-images/grafana
+      - rm -rf .git
+      - mkdir /drone/workspace/src/github.com/grafana/grafana/data/plugins/datasource
+      - mkdir /drone/workspace/src/github.com/grafana/grafana/data/plugins/datasource/kirkmonitor
+      - cp -a datasource/kirkmonitor/. /drone/workspace/src/github.com/grafana/grafana/data/plugins/datasource/kirkmonitor/
+  
+  publish:
+    image: plugins/docker
+    registry: index.qiniu.com
+    repo: index.qiniu.com/taozeyu/pili-apm-grafana
+    file: Dockerfile
+    username: AtIGg9XvJkPYdjaBYiCyj5J-ZEaX4RJ8D-dV_BgR
+    password: krP_QWcSulX45PZZlJP-xpSEXrJhSH6-zl-5ViLl
+    tags: [ "${DRONE_COMMIT_BRANCH}-${DRONE_COMMIT_SHA:0:8}", latest ]
+    when:
+      event: [push, tag]
+  
+  update-development:
+    image: taozeyu/kirk:latest
+    environment:
+      - AST=taozeyu.apm-portal
+      - AK=AtIGg9XvJkPYdjaBYiCyj5J-ZEaX4RJ8D-dV_BgR
+      - SK=krP_QWcSulX45PZZlJP-xpSEXrJhSH6-zl-5ViLl
+    commands:
+      - kirk-login
+      - "kirk services update development/pili-apm-grafana -i taozeyu/pili-apm-grafana:${DRONE_COMMIT_BRANCH}-${DRONE_COMMIT_SHA:0:8}"
+    when:
+      event: [push]
+
+  update-testing:
+    image: taozeyu/kirk:latest
+    environment:
+      - AST=taozeyu.apm-portal
+      - AK=AtIGg9XvJkPYdjaBYiCyj5J-ZEaX4RJ8D-dV_BgR
+      - SK=krP_QWcSulX45PZZlJP-xpSEXrJhSH6-zl-5ViLl
+    commands:
+      - kirk-login
+      - "kirk services update testing/pili-apm-grafana -i taozeyu/pili-apm-grafana:${DRONE_COMMIT_BRANCH}-${DRONE_COMMIT_SHA:0:8}"
+    when:
+      event: [tag]
