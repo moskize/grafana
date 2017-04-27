@@ -1,5 +1,7 @@
 # Pili 定制 Grafana
 
+[![Build Status](http://pili-drone.taozeyu.com/api/badges/qiniuapm-portal/pili-apm-grafana/status.svg)](http://pili-drone.taozeyu.com/qiniuapm-portal/pili-apm-grafana)
+
 ## Clone 这个 Repo
 
 - 如果你想把 repo 放在本地的 ``/home/pili-apm-grafana``。
